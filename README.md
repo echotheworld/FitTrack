@@ -4,7 +4,7 @@ FitTrack is a modern, high-performance fitness application built with React Nati
 
 ---
 
-## 🚀 Getting Started (For Groupmates)
+## 🚀 Getting Started
 
 If you are not a developer, follow these simple steps to run the app on your phone:
 
