@@ -6,6 +6,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { ref, get } from 'firebase/database';
 import { useActivityStore } from './activityStore';
 import { useGoalStore } from './goalStore';
+import { encryptData, decryptData } from '../utils/encryption';
 
 const getStorage = () => {
   if (Platform.OS === 'web') {
@@ -36,6 +37,47 @@ export const useAuthStore = create(
       setPreferences: (newPrefs) => set((state) => ({ 
         preferences: { ...state.preferences, ...newPrefs } 
       })),
+
+      processUserData: (userData) => {
+        if (!userData) return null;
+        const allKeys = Object.keys(userData);
+        console.log("All Database Keys:", allKeys);
+        
+        const getValue = (obj, targetKey) => {
+          const lowerTarget = targetKey.toLowerCase();
+          const foundKey = Object.keys(obj).find(k => {
+            const cleanKey = k.trim().toLowerCase();
+            return cleanKey === lowerTarget;
+          });
+          if (foundKey) console.log(`Found match for ${targetKey}: ${foundKey}`);
+          return foundKey ? obj[foundKey] : undefined;
+        };
+
+        const rawFirstName = getValue(userData, 'firstName') || getValue(userData, 'first_name') || '';
+        const rawLastName = getValue(userData, 'lastName') || getValue(userData, 'last_name') || '';
+        const rawName = getValue(userData, 'name') || '';
+        const rawEmail = getValue(userData, 'email') || '';
+        
+        console.log("Raw Name Values Found:", { rawFirstName: !!rawFirstName, rawLastName: !!rawLastName });
+
+        const processed = {
+          ...userData,
+          firstName: decryptData(rawFirstName),
+          lastName: decryptData(rawLastName),
+          email: decryptData(rawEmail),
+          name: decryptData(rawName),
+          gender: decryptData(getValue(userData, 'gender')),
+          fitnessLevel: decryptData(getValue(userData, 'fitnessLevel')),
+          age: parseInt(decryptData(getValue(userData, 'age'))) || getValue(userData, 'age'),
+          weight: parseFloat(decryptData(getValue(userData, 'weight'))) || getValue(userData, 'weight'),
+          height: parseFloat(decryptData(getValue(userData, 'height'))) || getValue(userData, 'height'),
+          dailyStepGoal: parseInt(decryptData(getValue(userData, 'dailyStepGoal'))) || getValue(userData, 'dailyStepGoal'),
+          weeklyDistanceGoal: parseFloat(decryptData(getValue(userData, 'weeklyDistanceGoal'))) || getValue(userData, 'weeklyDistanceGoal'),
+          dailyCalorieGoal: parseInt(decryptData(getValue(userData, 'dailyCalorieGoal'))) || getValue(userData, 'dailyCalorieGoal')
+        };
+
+        return processed;
+      },
       
       setUser: (userData) => {
         const currentUser = getStore().user;
@@ -71,6 +113,31 @@ export const useAuthStore = create(
         set({ user: null, isAuthenticated: false, hasCompletedOnboarding: false });
       },
 
+      refreshUser: async () => {
+        const currentUser = auth.currentUser;
+        if (!currentUser) return;
+
+        try {
+          const userRef = ref(database, `users/${currentUser.uid}`);
+          console.log("Manual Refresh: Fetching from", `users/${currentUser.uid}`);
+          const snapshot = await get(userRef);
+          if (snapshot.exists()) {
+            const rawData = snapshot.val();
+            console.log("Manual Refresh: Data Found:", JSON.stringify(rawData));
+            const userData = getStore().processUserData(rawData);
+            set({ 
+              user: { ...userData, uid: currentUser.uid, displayName: currentUser.displayName },
+              hasCompletedOnboarding: !!userData.age && !!userData.weight && !!userData.height
+            });
+            return userData;
+          } else {
+            console.log("Manual Refresh: NO RECORD FOUND AT PATH");
+          }
+        } catch (error) {
+          console.error("Error refreshing user:", error);
+        }
+      },
+
       initializeAuth: () => {
         console.log("Initializing Auth...");
         onAuthStateChanged(auth, async (firebaseUser) => {
@@ -80,12 +147,15 @@ export const useAuthStore = create(
           if (firebaseUser) {
             try {
               const userRef = ref(database, `users/${firebaseUser.uid}`);
+              console.log("Fetching DB record from path:", `users/${firebaseUser.uid}`);
               const snapshot = await get(userRef);
               
               if (snapshot.exists()) {
-                const userData = snapshot.val();
+                const rawData = snapshot.val();
+                console.log("SNAPSHOT DATA FOUND:", JSON.stringify(rawData));
+                const userData = getStore().processUserData(rawData);
                 set({ 
-                  user: { ...userData, uid: firebaseUser.uid }, 
+                  user: { ...userData, uid: firebaseUser.uid, displayName: firebaseUser.displayName }, 
                   isAuthenticated: true,
                   hasCompletedOnboarding: !!userData.age && !!userData.weight && !!userData.height
                 });

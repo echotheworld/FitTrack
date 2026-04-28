@@ -3,64 +3,22 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList } from '
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING } from '../../constants/theme';
 
-const NOTIFICATIONS = [
-  {
-    id: '1',
-    type: 'achievement',
-    title: 'New Rank Achieved!',
-    description: 'Congratulations! You are now a Fit Athlete. Keep up the great work!',
-    time: '2h ago',
-    icon: 'trophy',
-    color: '#F59E0B',
-    unread: true
-  },
-  {
-    id: '2',
-    type: 'reminder',
-    title: 'Workout Reminder',
-    description: 'Time for your Evening Run. You are only 1,500 steps away from your goal!',
-    time: '5h ago',
-    icon: 'notifications',
-    color: COLORS.primary,
-    unread: true
-  },
-  {
-    id: '3',
-    type: 'social',
-    title: 'Community Update',
-    description: 'Jericho liked your latest workout: Morning Yoga.',
-    time: 'Yesterday',
-    icon: 'heart',
-    color: '#EF4444',
-    unread: false
-  },
-  {
-    id: '4',
-    type: 'goal',
-    title: 'Goal Reached!',
-    description: 'You hit your water intake goal for 3 days in a row. Stay hydrated!',
-    time: 'Yesterday',
-    icon: 'water',
-    color: '#3B82F6',
-    unread: false
-  },
-  {
-    id: '5',
-    type: 'tip',
-    title: 'Health Tip',
-    description: 'Remember to stretch after your workouts to improve flexibility and recovery.',
-    time: '2 days ago',
-    icon: 'bulb',
-    color: '#10B981',
-    unread: false
-  }
-];
+import { useNotificationStore } from '../../store/notificationStore';
+import { useAuthStore } from '../../store/authStore';
 
 export default function NotificationsScreen({ navigation }) {
+  const { notifications, markAllAsRead, markAsRead } = useNotificationStore();
+  const { user } = useAuthStore();
+
   const renderItem = ({ item }) => (
-    <TouchableOpacity style={[styles.notificationCard, item.unread && styles.unreadCard]}>
-      <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
-        <Ionicons name={item.icon} size={22} color={item.color} />
+    <TouchableOpacity 
+      style={[styles.notificationCard, item.unread && styles.unreadCard]}
+      onPress={() => {
+        if (item.unread) markAsRead(item.id);
+      }}
+    >
+      <View style={[styles.iconContainer, { backgroundColor: (item.color || COLORS.primary) + '20' }]}>
+        <Ionicons name={item.icon || 'notifications'} size={22} color={item.color || COLORS.primary} />
       </View>
       <View style={styles.contentContainer}>
         <View style={styles.headerRow}>
@@ -80,13 +38,13 @@ export default function NotificationsScreen({ navigation }) {
           <Ionicons name="chevron-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={markAllAsRead}>
           <Text style={styles.markReadText}>Mark all as read</Text>
         </TouchableOpacity>
       </View>
 
       <FlatList
-        data={NOTIFICATIONS}
+        data={notifications}
         renderItem={renderItem}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
@@ -95,6 +53,9 @@ export default function NotificationsScreen({ navigation }) {
           <View style={styles.emptyContainer}>
             <Ionicons name="notifications-off-outline" size={64} color={COLORS.border} />
             <Text style={styles.emptyText}>No notifications yet</Text>
+            <Text style={{ color: COLORS.textSecondary, fontSize: 13, marginTop: 8, textAlign: 'center' }}>
+              We'll notify you about achievements and reminders here.
+            </Text>
           </View>
         }
       />

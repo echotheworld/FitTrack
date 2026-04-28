@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PieChart } from 'react-native-gifted-charts';
@@ -7,15 +7,22 @@ import { useAuthStore } from '../../store/authStore';
 import { useActivityStore } from '../../store/activityStore';
 import { useGoalStore } from '../../store/goalStore';
 import { getMondayOfCurrentWeek, getDailyStats, calculateStatsForPeriod, calculateStreak } from '../../utils/statsHelper';
+import { useNotificationStore } from '../../store/notificationStore';
 
 const { width } = Dimensions.get('window');
 
 export default function DashboardScreen({ navigation }) {
-  const { user } = useAuthStore();
+  const { user, refreshUser } = useAuthStore();
+  const notifications = useNotificationStore(state => state.notifications);
+  const unreadCount = notifications.filter(n => n.unread).length;
+
+  useEffect(() => {
+    refreshUser();
+  }, []);
   const activities = useActivityStore(state => state.activities);
   const addActivity = useActivityStore(state => state.addActivity);
   const currentWorkout = useActivityStore(state => state.currentWorkout);
-  
+
   // Source goals from database (user profile) first
   const storeGoals = useGoalStore();
   const dailyStepGoal = user?.dailyStepGoal || storeGoals.dailyStepGoal;
@@ -29,7 +36,7 @@ export default function DashboardScreen({ navigation }) {
   // Calculate Weekly Progress using Monday start
   const monday = getMondayOfCurrentWeek();
   const weeklyStats = calculateStatsForPeriod(activities, monday, new Date(), currentWorkout);
-  
+
   const weeklyDistance = weeklyStats.distance;
   const weeklyProgress = Math.min(weeklyDistance / weeklyDistanceGoal, 1);
 
@@ -124,13 +131,22 @@ export default function DashboardScreen({ navigation }) {
                 <Image source={{ uri: user.photoURL }} style={styles.avatar} />
               ) : (
                 <View style={styles.placeholderAvatar}>
-                  <Text style={styles.avatarText}>{user?.firstName?.[0] || 'J'}</Text>
+                  <Text style={styles.avatarText}>
+                    {user?.firstName && user?.lastName 
+                      ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase() 
+                      : (user?.firstName?.[0] || user?.email?.[0] || 'J').toUpperCase()}
+                  </Text>
                 </View>
               )}
             </View>
             <View style={styles.nameBox}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={styles.userName}>{user?.firstName || 'Jericho'} {user?.lastName ? `${user.lastName[0].toUpperCase()}.` : ''}</Text>
+                <Text style={styles.welcomeText}>Hello,</Text>
+                <Text style={styles.userName}>
+                  {user?.firstName || user?.lastName
+                    ? ` ${user.firstName || ''} ${user.lastName || ''}`.trimEnd()
+                    : ` ${user?.displayName || user?.name || 'Athlete'}`}
+                </Text>
                 {streak > 0 && (
                   <View style={styles.streakBadge}>
                     <Ionicons name="flame" size={14} color="#FFF" />
@@ -147,7 +163,11 @@ export default function DashboardScreen({ navigation }) {
             onPress={() => navigation.navigate('Notifications')}
           >
             <Ionicons name="notifications-outline" size={24} color="#1A1C1E" />
-            <View style={styles.notifBadge} />
+            {unreadCount > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>{unreadCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -329,6 +349,7 @@ const styles = StyleSheet.create({
   },
   avatarText: { color: '#FFF', fontWeight: '800', fontSize: 18 },
   nameBox: { marginLeft: 12 },
+  welcomeText: { color: COLORS.textSecondary, fontSize: 13, fontWeight: '600' },
   userName: { color: COLORS.text, fontSize: 15, fontWeight: '800' },
   userStatus: { color: COLORS.primary, fontSize: 10, fontWeight: '700' },
   testerBtn: {
@@ -360,13 +381,19 @@ const styles = StyleSheet.create({
   },
   notifBadge: {
     position: 'absolute',
-    top: 12,
-    right: 14,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    top: 10,
+    right: 10,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: '#EF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: '#FFF'
   },
+  notifBadgeText: { color: '#FFF', fontSize: 9, fontWeight: '900' },
   dateSelectorContainer: {},
   monthHeader: {
     flexDirection: 'row',

@@ -5,6 +5,7 @@ import { auth, database } from '../../utils/firebaseConfig';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { ref, set } from 'firebase/database';
 import { Ionicons } from '@expo/vector-icons';
+import { encryptData } from '../../utils/encryption';
 
 export default function RegisterScreen({ navigation }) {
   const [formData, setFormData] = useState({
@@ -52,12 +53,12 @@ export default function RegisterScreen({ navigation }) {
 
       const user = userCredential.user;
 
-      // Save extra info to Realtime Database
+      // Save extra info to Realtime Database (ENCRYPTED)
       await set(ref(database, `users/${user.uid}`), {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        name: `${formData.firstName} ${formData.lastName}`,
+        firstName: encryptData(formData.firstName),
+        lastName: encryptData(formData.lastName),
+        email: encryptData(formData.email),
+        name: encryptData(`${formData.firstName} ${formData.lastName}`),
         createdAt: new Date().toISOString(),
       });
 

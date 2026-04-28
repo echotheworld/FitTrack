@@ -30,10 +30,10 @@ export default function ProgressScreen() {
     const d = new Date(monday);
     d.setDate(monday.getDate() + index);
     const dayStats = getDailyStats(activities, d);
-    return { 
-      value: dayStats.calories || 0, 
-      label, 
-      frontColor: d.toDateString() === today.toDateString() ? COLORS.primary : undefined 
+    return {
+      value: dayStats.calories || 0,
+      label,
+      frontColor: d.toDateString() === today.toDateString() ? COLORS.primary : undefined
     };
   });
 
@@ -41,7 +41,7 @@ export default function ProgressScreen() {
     const d = new Date(monday);
     d.setDate(monday.getDate() + index);
     const dayStats = getDailyStats(activities, d);
-    return { 
+    return {
       value: dayStats.steps || 0,
       label: label,
       dataPointText: dayStats.steps > 0 ? dayStats.steps.toString() : undefined
@@ -53,23 +53,23 @@ export default function ProgressScreen() {
   const chartMaxValue = Math.ceil(maxStepsInWeek / 1000) * 1000;
 
   const bestDayStats = weeklyCalsData.reduce((prev, current) => (prev.value > current.value) ? prev : current);
-  const bestDayName = bestDayStats.label === 'M' ? 'Monday' : 
-                     bestDayStats.label === 'T' ? 'Tuesday' :
-                     bestDayStats.label === 'W' ? 'Wednesday' :
-                     bestDayStats.label === 'T' ? 'Thursday' :
-                     bestDayStats.label === 'F' ? 'Friday' :
-                     bestDayStats.label === 'S' ? 'Saturday' : 'Sunday';
+  const bestDayName = bestDayStats.label === 'M' ? 'Monday' :
+    bestDayStats.label === 'T' ? 'Tuesday' :
+      bestDayStats.label === 'W' ? 'Wednesday' :
+        bestDayStats.label === 'T' ? 'Thursday' :
+          bestDayStats.label === 'F' ? 'Friday' :
+            bestDayStats.label === 'S' ? 'Saturday' : 'Sunday';
 
   // 3. Monthly Data
   const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
   const monthlyStats = calculateStatsForPeriod(activities, startOfMonth);
-  
+
   const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
   const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
   const lastMonthStats = calculateStatsForPeriod(activities, lastMonthStart, lastMonthEnd);
 
-  const monthDiff = lastMonthStats.calories > 0 
-    ? Math.round(((monthlyStats.calories - lastMonthStats.calories) / lastMonthStats.calories) * 100) 
+  const monthDiff = lastMonthStats.calories > 0
+    ? Math.round(((monthlyStats.calories - lastMonthStats.calories) / lastMonthStats.calories) * 100)
     : 100;
 
   const [expandedDay, setExpandedDay] = useState(null);
@@ -82,7 +82,7 @@ export default function ProgressScreen() {
       d.setDate(today.getDate() - i);
       const dayStats = getDailyStats(activities, d);
       const dayActivities = activities.filter(a => new Date(a.date).toDateString() === d.toDateString());
-      
+
       historyData.push({
         id: i,
         date: d,
@@ -98,7 +98,7 @@ export default function ProgressScreen() {
         <Text style={styles.sectionTitle}>7-Day Performance Log</Text>
         {historyData.map((item) => (
           <View key={item.id}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.historyLogItem, item.isToday && styles.todayLogItem]}
               onPress={() => setExpandedDay(expandedDay === item.id ? null : item.id)}
               activeOpacity={0.7}
@@ -109,7 +109,7 @@ export default function ProgressScreen() {
                 </Text>
                 <Text style={styles.logDateNum}>{item.date.getDate()}</Text>
               </View>
-              
+
               <View style={styles.logDataRow}>
                 <View style={styles.logStat}>
                   <Ionicons name="footsteps" size={16} color={COLORS.primary} />
@@ -122,10 +122,10 @@ export default function ProgressScreen() {
               </View>
 
               <View style={styles.logActionBox}>
-                <Ionicons 
-                  name={expandedDay === item.id ? "chevron-up" : "list-outline"} 
-                  size={20} 
-                  color={item.activityList.length > 0 ? COLORS.primary : "#E1E8ED"} 
+                <Ionicons
+                  name={expandedDay === item.id ? "chevron-up" : "list-outline"}
+                  size={20}
+                  color={item.activityList.length > 0 ? COLORS.primary : "#E1E8ED"}
                 />
               </View>
             </TouchableOpacity>
@@ -150,7 +150,7 @@ export default function ProgressScreen() {
                 ))}
               </View>
             )}
-            
+
             {expandedDay === item.id && item.activityList.length === 0 && (
               <View style={styles.expandedContent}>
                 <Text style={styles.emptyLogText}>No activities recorded for this day.</Text>
@@ -194,7 +194,7 @@ export default function ProgressScreen() {
           startOpacity={0.1}
           endOpacity={0}
           initialSpacing={20}
-          spacing={ (width - 100) / 7 }
+          spacing={(width - 100) / 7}
           maxValue={chartMaxValue}
           noOfSections={5}
           yAxisColor="#E1E8ED"
@@ -235,7 +235,7 @@ export default function ProgressScreen() {
           <Text style={styles.placeholderText}>Monthly heatmap visualization coming soon</Text>
         </View>
       </View>
-      
+
       <View style={styles.chartCard}>
         <Text style={styles.cardTitle}>Comparison</Text>
         <View style={styles.comparisonRow}>
@@ -257,12 +257,12 @@ export default function ProgressScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Progress</Text>
       </View>
-      
+
       <View style={styles.tabBarContainer}>
         <View style={styles.tabBar}>
           {['Daily', 'Weekly', 'Monthly'].map(tab => (
-            <TouchableOpacity 
-              key={tab} 
+            <TouchableOpacity
+              key={tab}
               onPress={() => setActiveTab(tab)}
               style={[styles.tab, activeTab === tab && styles.activeTab]}
             >
@@ -286,9 +286,9 @@ const styles = StyleSheet.create({
   header: { paddingTop: 60, paddingHorizontal: SPACING.lg, marginBottom: 10 },
   headerTitle: { fontSize: 28, fontWeight: '800', color: COLORS.text },
   tabBarContainer: { paddingHorizontal: SPACING.lg, marginBottom: 10 },
-  tabBar: { 
-    flexDirection: 'row', 
-    backgroundColor: '#FFF', 
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF',
     borderRadius: 15,
     padding: 5,
     shadowColor: '#000',
@@ -302,10 +302,10 @@ const styles = StyleSheet.create({
   tabText: { color: COLORS.textSecondary, fontWeight: '600' },
   activeTabText: { color: '#FFF' },
   tabContent: { padding: SPACING.lg },
-  chartCard: { 
-    backgroundColor: COLORS.surface, 
-    padding: SPACING.lg, 
-    borderRadius: 28, 
+  chartCard: {
+    backgroundColor: COLORS.surface,
+    padding: SPACING.lg,
+    borderRadius: 28,
     marginBottom: SPACING.lg,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -462,10 +462,10 @@ const styles = StyleSheet.create({
   timelineActivity: { color: COLORS.text, fontSize: 16, fontWeight: '600', marginTop: 2 },
   timelineStats: { color: COLORS.primary, fontSize: 12, fontWeight: '600', marginTop: 2 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  summaryCard: { 
-    backgroundColor: COLORS.surface, 
-    padding: SPACING.lg, 
-    borderRadius: 24, 
+  summaryCard: {
+    backgroundColor: COLORS.surface,
+    padding: SPACING.lg,
+    borderRadius: 24,
     width: '48%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },

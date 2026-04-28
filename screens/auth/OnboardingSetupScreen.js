@@ -6,6 +6,8 @@ import { ref, update } from 'firebase/database';
 import { useAuthStore } from '../../store/authStore';
 import { useGoalStore } from '../../store/goalStore';
 import { Ionicons } from '@expo/vector-icons';
+import { encryptData } from '../../utils/encryption';
+import { useNotificationStore } from '../../store/notificationStore';
 
 const CompactInput = ({ label, value, unit, onChangeText, placeholder }) => (
   <View style={styles.compactInputBox}>
@@ -112,7 +114,17 @@ export default function OnboardingSetupScreen() {
 
     setLoading(true);
     try {
-      const updates = {
+      const dbUpdates = {
+        age: encryptData(formData.age),
+        weight: encryptData(formData.weight),
+        height: encryptData(formData.height),
+        dailyStepGoal: encryptData(formData.dailyStepGoal),
+        weeklyDistanceGoal: encryptData(formData.weeklyDistanceGoal),
+        dailyCalorieGoal: encryptData(formData.dailyCalorieGoal),
+        onboardingCompleted: true
+      };
+
+      const localUpdates = {
         age: parseInt(formData.age),
         weight: parseFloat(formData.weight),
         height: parseFloat(formData.height),
@@ -122,13 +134,13 @@ export default function OnboardingSetupScreen() {
         onboardingCompleted: true
       };
       
-      await update(ref(database, `users/${user.uid}`), updates);
+      await update(ref(database, `users/${user.uid}`), dbUpdates);
       
       // Sync with local stores
-      setUser({ ...user, ...updates });
-      setDailyStepGoal(updates.dailyStepGoal);
-      setDailyCalorieGoal(updates.dailyCalorieGoal);
-      setWeeklyDistanceGoal(updates.weeklyDistanceGoal);
+      setUser({ ...user, ...localUpdates });
+      setDailyStepGoal(localUpdates.dailyStepGoal);
+      setDailyCalorieGoal(localUpdates.dailyCalorieGoal);
+      setWeeklyDistanceGoal(localUpdates.weeklyDistanceGoal);
       
       setOnboardingCompleted(true);
     } catch (error) {
@@ -136,6 +148,31 @@ export default function OnboardingSetupScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const { addNotification } = useNotificationStore();
+
+  const handleFinish = async () => {
+    await handleSaveProfile();
+    
+    // Add Welcome Notification
+    const firstName = user?.firstName || 'there';
+    addNotification({
+      type: 'welcome',
+      title: `Welcome, ${firstName}!`,
+      description: 'Your FitTrack journey begins now. We\'ve set up your personalized goals to help you stay active and healthy.',
+      icon: 'sparkles',
+      color: COLORS.primary,
+    });
+
+    // Add Initial Reminder
+    addNotification({
+      type: 'reminder',
+      title: 'Daily Goal Reminder',
+      description: `Don't forget to reach your daily goal of ${formData.dailyStepGoal} steps today!`,
+      icon: 'notifications',
+      color: '#F59E0B',
+    });
   };
 
   return (
@@ -226,7 +263,7 @@ export default function OnboardingSetupScreen() {
 
             <TouchableOpacity 
               style={[styles.button, loading && { opacity: 0.7 }]} 
-              onPress={handleSaveProfile}
+              onPress={handleFinish}
               disabled={loading}
             >
               {loading ? (

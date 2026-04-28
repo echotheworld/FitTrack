@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert, Modal, TextInput, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -10,9 +10,15 @@ import { database, storage } from '../../utils/firebaseConfig';
 import { ref as dbRef, update, remove } from 'firebase/database';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 
+import { encryptData } from '../../utils/encryption';
+
 export default function ProfileScreen({ navigation }) {
-  const { user, setUser, logout, preferences, setPreferences } = useAuthStore();
+  const { user, setUser, logout, preferences, setPreferences, refreshUser } = useAuthStore();
   const { activities, clearActivities } = useActivityStore();
+
+  useEffect(() => {
+    refreshUser();
+  }, []);
 
   const isMetric = preferences?.isMetric ?? true;
   const notifsEnabled = preferences?.notifsEnabled ?? true;
@@ -28,9 +34,11 @@ export default function ProfileScreen({ navigation }) {
     streak: calculateStreak(activities),
   };
 
-  const getInitials = (name) => {
-    if (!name) return '??';
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  const getInitials = (firstName, lastName, email) => {
+    if (firstName && lastName) return `${firstName[0]}${lastName[0]}`.toUpperCase();
+    if (firstName) return firstName[0].toUpperCase();
+    if (email) return email[0].toUpperCase();
+    return '??';
   };
 
   const handleResetData = () => {
@@ -100,7 +108,16 @@ export default function ProfileScreen({ navigation }) {
 
   const handleUpdateProfile = async () => {
     try {
-      const updates = {
+      const dbUpdates = {
+        firstName: encryptData(editData.firstName),
+        lastName: encryptData(editData.lastName),
+        name: encryptData(`${editData.firstName} ${editData.lastName}`),
+        age: encryptData(editData.age?.toString()),
+        weight: encryptData(editData.weight?.toString()),
+        height: encryptData(editData.height?.toString())
+      };
+
+      const localUpdates = {
         firstName: editData.firstName,
         lastName: editData.lastName,
         name: `${editData.firstName} ${editData.lastName}`,
@@ -108,8 +125,9 @@ export default function ProfileScreen({ navigation }) {
         weight: parseFloat(editData.weight),
         height: parseFloat(editData.height)
       };
-      await update(dbRef(database, `users/${user.uid}`), updates);
-      setUser({ ...user, ...updates });
+
+      await update(dbRef(database, `users/${user.uid}`), dbUpdates);
+      setUser({ ...user, ...localUpdates });
       setEditModalVisible(false);
       Alert.alert('Profile Updated', 'Your changes have been saved.');
     } catch (error) {
@@ -150,7 +168,9 @@ export default function ProfileScreen({ navigation }) {
               <Image source={{ uri: user.photoURL }} style={styles.avatarImage} />
             ) : (
               <View style={styles.placeholderAvatar}>
-                <Text style={styles.avatarInitials}>{user?.firstName?.[0] || 'J'}</Text>
+                <Text style={styles.avatarInitials}>
+                  {getInitials(user?.firstName, user?.lastName, user?.displayName || user?.name || user?.email)}
+                </Text>
               </View>
             )}
             {uploading && (
@@ -164,9 +184,19 @@ export default function ProfileScreen({ navigation }) {
           </View>
         </TouchableOpacity>
 
-        <Text style={styles.name}>{user?.firstName || 'Athlete'} {user?.lastName || ''}</Text>
+        <Text style={styles.name}>
+          {user?.firstName || user?.lastName
+            ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
+            : (user?.displayName || user?.name || 'User')}
+        </Text>
         <Text style={styles.email}>{user?.email}</Text>
-        <TouchableOpacity style={styles.editBtn} onPress={() => setEditModalVisible(true)}>
+        <TouchableOpacity 
+          style={styles.editBtn} 
+          onPress={() => {
+            setEditData({ ...user });
+            setEditModalVisible(true);
+          }}
+        >
           <Text style={styles.editBtnText}>Edit Profile</Text>
         </TouchableOpacity>
       </View>

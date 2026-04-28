@@ -6,6 +6,7 @@ import { Pedometer } from 'expo-sensors';
 import { COLORS, SPACING } from '../../constants/theme';
 import { useActivityStore } from '../../store/activityStore';
 import { useAuthStore } from '../../store/authStore';
+import { useNotificationStore } from '../../store/notificationStore';
 import { database } from '../../utils/firebaseConfig';
 import { ref, push } from 'firebase/database';
 
@@ -18,7 +19,7 @@ export default function RecordWorkoutScreen({ route, navigation }) {
   const [steps, setSteps] = useState(0);
   const [sessionSteps, setSessionSteps] = useState(0); // Total steps across all active periods
   const [isPedometerAvailable, setIsPedometerAvailable] = useState('checking');
-  
+
   const addActivity = useActivityStore(state => state.addActivity);
   const startWorkout = useActivityStore(state => state.startWorkout);
   const updateCurrentWorkout = useActivityStore(state => state.updateCurrentWorkout);
@@ -56,29 +57,29 @@ export default function RecordWorkoutScreen({ route, navigation }) {
   // Pedometer logic
   useEffect(() => {
     let subscription;
- 
+
     const subscribe = async () => {
       const isAvailable = await Pedometer.isAvailableAsync();
       setIsPedometerAvailable(String(isAvailable));
- 
+
       if (isAvailable && isActive) {
         subscription = Pedometer.watchStepCount(result => {
           const totalSteps = sessionSteps + result.steps;
           setSteps(totalSteps);
-          updateCurrentWorkout({ 
+          updateCurrentWorkout({
             steps: totalSteps,
             distance: parseFloat(((totalSteps * STEP_LENGTH_METERS) / 1000).toFixed(2))
           });
         });
       }
     };
- 
+
     subscribe();
- 
+
     return () => {
       if (subscription) {
         // When pausing, save the current session steps into sessionSteps
-        setSessionSteps(prev => steps); 
+        setSessionSteps(prev => steps);
         subscription.remove();
       }
     };
@@ -105,15 +106,15 @@ export default function RecordWorkoutScreen({ route, navigation }) {
       ]);
       return;
     }
-    
+
     setIsActive(false);
     Alert.alert(
       "Finish Workout",
       "Great job! Want to save this session?",
       [
         { text: "Resume", onPress: () => setIsActive(true), style: "cancel" },
-        { 
-          text: "Save", 
+        {
+          text: "Save",
           onPress: async () => {
             const newActivity = {
               type: activityType,
@@ -137,8 +138,18 @@ export default function RecordWorkoutScreen({ route, navigation }) {
               }
             }
 
+            // 3. Trigger Notification
+            const { addNotification } = useNotificationStore.getState();
+            addNotification({
+              type: 'workout',
+              title: 'Great job!',
+              description: `You completed a ${Math.ceil(seconds / 60)} minute ${activityType.toLowerCase()} session. Keep up the momentum!`,
+              icon: 'fitness',
+              color: '#10B981',
+            });
+
             navigation.navigate('Main');
-          } 
+          }
         }
       ]
     );
@@ -161,9 +172,9 @@ export default function RecordWorkoutScreen({ route, navigation }) {
           <View style={styles.readyContainer}>
             <Text style={styles.readyTitle}>Start your record now</Text>
             <Text style={styles.readySub}>Your {activityType.toLowerCase()} session is ready.</Text>
-            
-            <TouchableOpacity 
-              style={styles.bigPlayBtn} 
+
+            <TouchableOpacity
+              style={styles.bigPlayBtn}
               onPress={() => setIsActive(true)}
               activeOpacity={0.8}
             >
@@ -191,8 +202,8 @@ export default function RecordWorkoutScreen({ route, navigation }) {
 
             <View style={styles.controls}>
               {!isActive ? (
-                <TouchableOpacity 
-                  style={[styles.controlBtn, styles.saveBtn]} 
+                <TouchableOpacity
+                  style={[styles.controlBtn, styles.saveBtn]}
                   onPress={handleFinish}
                 >
                   <Ionicons name="checkmark" size={32} color="#FFF" />
@@ -200,8 +211,8 @@ export default function RecordWorkoutScreen({ route, navigation }) {
                 </TouchableOpacity>
               ) : null}
 
-              <TouchableOpacity 
-                style={[styles.controlBtn, isActive ? styles.pauseBtn : styles.resumeBtn]} 
+              <TouchableOpacity
+                style={[styles.controlBtn, isActive ? styles.pauseBtn : styles.resumeBtn]}
                 onPress={() => setIsActive(!isActive)}
               >
                 <Ionicons name={isActive ? "pause" : "play"} size={32} color="#FFF" />
@@ -218,7 +229,7 @@ export default function RecordWorkoutScreen({ route, navigation }) {
                   onPress={() => {
                     const newSteps = steps + 1000;
                     setSteps(newSteps);
-                    updateCurrentWorkout({ 
+                    updateCurrentWorkout({
                       steps: newSteps,
                       distance: parseFloat(((newSteps * STEP_LENGTH_METERS) / 1000).toFixed(2))
                     });
@@ -233,7 +244,7 @@ export default function RecordWorkoutScreen({ route, navigation }) {
                   onPress={() => {
                     const newSteps = steps + 1;
                     setSteps(newSteps);
-                    updateCurrentWorkout({ 
+                    updateCurrentWorkout({
                       steps: newSteps,
                       distance: parseFloat(((newSteps * STEP_LENGTH_METERS) / 1000).toFixed(2))
                     });
@@ -253,19 +264,19 @@ export default function RecordWorkoutScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  header: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: SPACING.lg,
     paddingVertical: 20
   },
   activityLabel: { fontSize: 12, fontWeight: '800', color: COLORS.primary, letterSpacing: 1 },
   headerTitle: { fontSize: 24, fontWeight: '800', color: COLORS.text },
   closeBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.accent, borderRadius: 14 },
-  
+
   mainContent: { flex: 1, justifyContent: 'center', paddingHorizontal: SPACING.lg },
-  
+
   // Ready State
   readyContainer: { alignItems: 'center' },
   readyTitle: { fontSize: 28, fontWeight: '900', color: COLORS.text, textAlign: 'center' },
@@ -290,12 +301,12 @@ const styles = StyleSheet.create({
   timerBox: { alignItems: 'center', marginBottom: 60 },
   timerLabel: { fontSize: 14, fontWeight: '700', color: COLORS.textSecondary, letterSpacing: 2, marginBottom: 12 },
   timerValue: { fontSize: 80, fontWeight: '900', color: COLORS.text, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' },
-  
+
   statsGrid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 80 },
   statItem: { flex: 1, alignItems: 'center' },
   statLabel: { fontSize: 12, fontWeight: '700', color: COLORS.textSecondary, letterSpacing: 1, marginBottom: 8 },
   statValue: { fontSize: 32, fontWeight: '800', color: COLORS.text },
-  
+
   controls: { flexDirection: 'row', justifyContent: 'center', gap: 20 },
   controlBtn: {
     paddingHorizontal: 30,
@@ -314,7 +325,7 @@ const styles = StyleSheet.create({
   resumeBtn: { backgroundColor: COLORS.primary },
   saveBtn: { backgroundColor: '#10B981' },
   btnLabel: { color: '#FFF', fontSize: 14, fontWeight: '900', marginTop: 8, letterSpacing: 1 },
-  
+
   testerContainer: {
     marginTop: 40,
     paddingTop: 30,
