@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "FitTrack",
-    "slug": "fittrack",
+    "slug": "fittrackv2",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -12,7 +12,11 @@
       "backgroundColor": "#0D0D0D"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fittrack.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,6 +25,8 @@
       },
       "package": "com.fittrack.app",
       "permissions": [
+        "ACTIVITY_RECOGNITION",
+        "READ_EXTERNAL_STORAGE",
         "ACTIVITY_RECOGNITION",
         "READ_EXTERNAL_STORAGE"
       ]
@@ -31,6 +37,18 @@
     "plugins": [
       "expo-font",
       "@react-native-community/datetimepicker"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "a2ff885f-5c7e-4175-90f3-e97687363313"
+      }
+    },
+    "owner": "echotheworlds-organization",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a2ff885f-5c7e-4175-90f3-e97687363313"
+    }
   }
 }

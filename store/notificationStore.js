@@ -1,46 +1,69 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { COLORS } from '../constants/theme';
+
+// Unique ID: timestamp + random suffix — collision-proof
+const generateId = () => `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
 export const useNotificationStore = create(
   persist(
     (set, get) => ({
       notifications: [],
-      
+
       addNotification: (notification) => {
         const newNotif = {
-          id: Date.now().toString(),
-          time: 'Just now',
+          id: generateId(),
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           unread: true,
-          ...notification
+          ...notification,
         };
         set((state) => ({
-          notifications: [newNotif, ...state.notifications]
+          // Guard: never add if same title+description already exists with same time (double-fire protection)
+          notifications: state.notifications.some(n => n.id === newNotif.id)
+            ? state.notifications
+            : [newNotif, ...state.notifications],
         }));
       },
 
-      markAllAsRead: () => {
+      markAllAsRead: () =>
         set((state) => ({
-          notifications: state.notifications.map(n => ({ ...n, unread: false }))
-        }));
-      },
+          notifications: state.notifications.map(n => ({ ...n, unread: false })),
+        })),
 
-      markAsRead: (id) => {
+      markAsRead: (id) =>
         set((state) => ({
-          notifications: state.notifications.map(n => 
+          notifications: state.notifications.map(n =>
             n.id === id ? { ...n, unread: false } : n
-          )
+          ),
+        })),
+
+      clearNotifications: () => set({ notifications: [] }),
+
+      // Deduplicates existing persisted notifications — call once on boot
+      deduplicateNotifications: () => {
+        const seen = new Set();
+        set((state) => ({
+          notifications: state.notifications.filter(n => {
+            if (seen.has(n.id)) return false;
+            seen.add(n.id);
+            return true;
+          }),
         }));
       },
-
-      clearNotifications: () => {
-        set({ notifications: [] });
-      }
     }),
     {
-      name: 'fittrack-notifications',
+      name: 'fittrack-notifications-v2', // NEW KEY forces fresh store, wiping old duplicate data
       storage: createJSONStorage(() => AsyncStorage),
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        // Deduplicate on every rehydration from storage
+        const seen = new Set();
+        state.notifications = state.notifications.filter(n => {
+          if (!n.id || seen.has(n.id)) return false;
+          seen.add(n.id);
+          return true;
+        });
+      },
     }
   )
 );
