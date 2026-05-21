@@ -1,13 +1,36 @@
-import { Platform } from 'react-native';
+import { Platform, LogBox } from 'react-native';
 import { useNotificationStore } from '../store/notificationStore';
 import { COLORS } from '../constants/theme';
 
+// Ignore the SDK 53/54 Expo Go push notification warning in LogBox
+LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
+
 let Notifications = null;
 try {
-  // Expo Go SDK 53+ removed support for Android remote notifications in the library.
-  // We only attempt to load if NOT in Expo Go or if explicitly needed.
-  // For now, let's just muffle it and ensure it doesn't crash.
+  // Temporarily override console.error and console.warn to prevent the Expo Go warning
+  // from triggering a full-screen red box during require.
+  const originalConsoleError = console.error;
+  const originalConsoleWarn = console.warn;
+
+  console.error = (...args) => {
+    if (args[0] && typeof args[0] === 'string' && args[0].includes('expo-notifications: Android Push notifications')) {
+      return;
+    }
+    originalConsoleError(...args);
+  };
+
+  console.warn = (...args) => {
+    if (args[0] && typeof args[0] === 'string' && args[0].includes('expo-notifications: Android Push notifications')) {
+      return;
+    }
+    originalConsoleWarn(...args);
+  };
+
   Notifications = require('expo-notifications');
+
+  // Restore original console functions
+  console.error = originalConsoleError;
+  console.warn = originalConsoleWarn;
 } catch (_) {
   console.log('[FitTrack] Notifications module not available (expected in Expo Go Android)');
 }
